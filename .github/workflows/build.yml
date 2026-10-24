@@ -1,0 +1,52 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Android প্রজেক্ট তৈরি
+        run: |
+          cp lib/main.dart /tmp/main.dart
+          flutter create . --platforms=android --project-name quran_reels --org com.durjoe
+          cp /tmp/main.dart lib/main.dart
+
+      - name: Internet permission যোগ
+        run: |
+          sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|&\n    <uses-permission android:name="android.permission.INTERNET"/>|' android/app/src/main/AndroidManifest.xml
+          grep INTERNET android/app/src/main/AndroidManifest.xml
+
+      - run: flutter pub get
+
+      - name: APK build
+        run: flutter build apk --release
+
+      - name: APK নাম ঠিক করা
+        run: cp build/app/outputs/flutter-apk/app-release.apk quran-reels.apk
+
+      - name: GitHub Release তৈরি
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Quran Reels v1.0.${{ github.run_number }}
+          body: ফ্রি APK। ডাউনলোড করে ফোনে install করুন।
+          files: quran-reels.apk
